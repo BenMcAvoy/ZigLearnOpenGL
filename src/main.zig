@@ -1,95 +1,71 @@
 const std = @import("std");
 
-const imgui = @import("zgui");
 const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
+const zmath = @import("zmath");
 
-fn newWindow(name: [:0]const u8, width: i32, height: i32) !*glfw.Window {
-    const gl_major = 4;
-    const gl_minor = 6;
+const utils = @import("utils.zig");
 
-    glfw.windowHintTyped(.context_version_major, gl_major);
-    glfw.windowHintTyped(.context_version_minor, gl_minor);
-    glfw.windowHintTyped(.opengl_profile, .opengl_core_profile);
+const ShaderProgram = @import("shader.zig").ShaderProgram;
+const Buffers = @import("buffers.zig").Buffers;
+const Object = @import("object.zig").Object;
 
-    glfw.windowHintTyped(.decorated, false);
+const gl = zopengl.bindings;
 
-    if (@import("builtin").os.tag == .macos) {
-        glfw.windowHintTyped(.opengl_forward_compat, true);
-    }
-
-    glfw.windowHintTyped(.client_api, .opengl_api);
-    glfw.windowHintTyped(.doublebuffer, true);
-
-    std.debug.print("Creating window with name {s} and size {d}x{d}\n", .{ name, width, height });
-    const window = try glfw.Window.create(width, height, name, null);
-
-    glfw.makeContextCurrent(window); // Set OpenGL context to the window
-    glfw.swapInterval(1); // Enable vsync
-
-    try zopengl.loadCoreProfile(glfw.getProcAddress, gl_major, gl_minor);
-
-    return window;
+fn resizeCallback(
+    window: *glfw.Window,
+    width: i32,
+    height: i32,
+) callconv(.C) void {
+    _ = window;
+    gl.viewport(0, 0, width, height);
 }
+
+const rect_vertices = [_]f32{
+    -0.5, 0.5, 0.0, // TL  0
+    0.5, 0.5, 0.0, // TR   1
+    -0.5, -0.5, 0.0, // BL 2
+    0.5, -0.5, 0.0, // BR  3
+};
+
+const rect_indices = [_]u32{
+    0, 1, 3,
+    2, 3, 0,
+};
 
 pub fn main() !void {
     try glfw.init();
     defer glfw.terminate();
 
-    const window = try newWindow("Zig GUI", 800, 600);
-
-    imgui.init(std.heap.c_allocator);
-
-    imgui.backend.init(window);
-    defer imgui.deinit();
-    defer imgui.backend.deinit();
+    const window = try utils.newWindow("Zig GUI", 800, 800);
     defer window.destroy();
 
-    const gl = zopengl.bindings;
+    _ = window.setFramebufferSizeCallback(resizeCallback);
 
-    var wants_open = true;
+    const vx_source = @embedFile("shaders/vert.glsl");
+    const fx_source = @embedFile("shaders/frag.glsl");
+
+    const shader = try ShaderProgram.init(vx_source, fx_source);
+    const buffers = try Buffers.init(&rect_vertices, &rect_indices);
+
+    const object_1 = Object.init(zmath.f32x4(0.0, 0.0, 0.0, 0.0), zmath.f32x4(0.5, 0.5, 0.5, 0.0), 0.0);
+    const object_2 = Object.init(zmath.f32x4(0.0, 0.0, 0.0, 0.0), zmath.f32x4(1.0, 0.25, 0.5, 0.0), 0.0);
+    const objects = [_]Object{ object_1, object_2 };
 
     while (!window.shouldClose() and window.getKey(.escape) != .press) {
         glfw.pollEvents();
 
-        gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0.2, 0.3, 0.3, 1.0 });
+        gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0.1, 0.1, 0.1, 1.0 });
 
-        const fb_size = window.getFramebufferSize();
-        imgui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
+        shader.use();
+        buffers.use();
 
-        imgui.setNextWindowPos(.{ .x = 0, .y = 0 });
-        imgui.setNextWindowSize(.{ .w = @floatFromInt(fb_size[0]), .h = @floatFromInt(fb_size[1]) });
-
-        if (imgui.begin("Demo Window", .{ .flags = .{
-            .no_move = true,
-            .no_resize = true,
-            .no_collapse = true,
-            .no_title_bar = false,
-            .menu_bar = true,
-        }, .popen = &wants_open })) {
-            if (imgui.beginMenuBar()) {
-                if (imgui.beginMenu("File", true)) {
-                    if (imgui.menuItem("Exit", .{}))
-                        window.setShouldClose(true);
-
-                    imgui.endMenu();
-                }
-
-                imgui.endMenuBar();
-            }
-
-            imgui.text("Hello, world!", .{});
-
-            if (imgui.button("Button", .{}))
-                std.debug.print("Button pressed!\n", .{});
-
-            imgui.end();
+        for (objects) |obj| {
+            const model_matrix: zmath.Mat = obj.getModelMatrix();
+            shader.set_mat4("model_matrix", model_matrix);
+            gl.drawElements(gl.TRIANGLES, @intCast(rect_indices.len), gl.UNSIGNED_INT, null);
         }
 
-        imgui.backend.draw();
         window.swapBuffers();
-
-        if (!wants_open)
-            window.setShouldClose(true);
     }
 }
