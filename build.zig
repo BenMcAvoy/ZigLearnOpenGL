@@ -59,12 +59,12 @@ pub fn build(b: *std.Build) void {
     const zmath = b.dependency("zmath", .{ .target = target });
     exe.root_module.addImport("zmath", zmath.module("root"));
 
-    // const zgui = b.dependency("zgui", .{
-    //     .target = target,
-    //     .backend = .glfw_opengl3,
-    // });
-    // exe.root_module.addImport("zgui", zgui.module("root"));
-    // exe.linkLibrary(zgui.artifact("imgui"));
+    const zgui = b.dependency("zgui", .{
+        .target = target,
+        .backend = .glfw_opengl3,
+    });
+    exe.root_module.addImport("zgui", zgui.module("root"));
+    exe.linkLibrary(zgui.artifact("imgui"));
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

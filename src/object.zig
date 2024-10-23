@@ -50,6 +50,7 @@ pub const Object = struct {
 
     pub fn rotate(self: *Object, rotation: f32) void {
         self.rotation += rotation;
+        self.rotation = @mod(self.rotation, 360.0);
     }
 
     pub fn getModelMatrix(self: Object) zmath.Mat {

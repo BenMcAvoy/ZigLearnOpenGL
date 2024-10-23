@@ -12,8 +12,6 @@ pub fn newWindow(name: [:0]const u8, width: i32, height: i32) !*glfw.Window {
     glfw.windowHintTyped(.context_version_minor, gl_minor);
     glfw.windowHintTyped(.opengl_profile, .opengl_core_profile);
 
-    glfw.windowHintTyped(.decorated, false);
-
     if (@import("builtin").os.tag == .macos) {
         glfw.windowHintTyped(.opengl_forward_compat, true);
     }

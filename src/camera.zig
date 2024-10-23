@@ -37,9 +37,9 @@ pub const Camera = struct {
     // Update orthographic projection matrix and view matrix
     fn update(self: *Camera) void {
         const aspect = self.width / self.height;
-        self.projection = zmath.orthographicLh(aspect / self.zoom, 1.0 / self.zoom, -1.0, 100.0);
+        self.projection = zmath.orthographicRh(aspect / self.zoom, 1.0 / self.zoom, -1.0, 100.0);
 
-        self.view = zmath.lookAtLh(self.position, (self.position + zmath.f32x4(0.0, 0.0, -1.0, 0.0)), zmath.f32x4(0.0, 1.0, 0.0, 0.0));
+        self.view = zmath.lookAtRh(self.position, (self.position + zmath.f32x4(0.0, 0.0, -1.0, 0.0)), zmath.f32x4(0.0, 1.0, 0.0, 0.0));
     }
 
     pub fn use(self: *Camera) void {

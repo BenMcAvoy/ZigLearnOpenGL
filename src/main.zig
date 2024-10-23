@@ -3,6 +3,7 @@ const std = @import("std");
 const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
 const zmath = @import("zmath");
+const zgui = @import("zgui");
 
 const utils = @import("utils.zig");
 
@@ -35,13 +36,16 @@ const rect_indices = [_]u32{
     2, 3, 0,
 };
 
-var camera = Camera.init(800, 800);
+const window_width = 1024;
+const window_height = 768;
+
+var camera = Camera.init(window_width, window_height);
 
 pub fn main() !void {
     try glfw.init();
     defer glfw.terminate();
 
-    const window = try utils.newWindow("Zig GUI", 800, 800);
+    const window = try utils.newWindow("Zig GUI", window_width, window_height);
     defer window.destroy();
 
     _ = window.setFramebufferSizeCallback(resizeCallback);
@@ -67,25 +71,46 @@ pub fn main() !void {
 
     const objects = [_]*Object{ &object_1, &object_2, &object_3 };
 
-    var fps_acc: f64 = 0.0;
-    var fps_count: f32 = 0;
+    zgui.init(std.heap.c_allocator);
+    zgui.backend.init(window);
+    defer zgui.deinit();
+    defer zgui.backend.deinit();
 
     var time: f64 = 0;
     while (!window.shouldClose() and window.getKey(.escape) != .press) {
-        fps_acc += glfw.getTime() - time;
-        fps_count += 1;
-
-        if (fps_acc >= 1.0) {
-            std.debug.print("FPS: {d}\n", .{fps_count / fps_acc});
-            fps_acc = 0.0;
-            fps_count = 0;
-        }
-
         time = glfw.getTime();
 
         glfw.pollEvents();
 
         gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0.1, 0.1, 0.1, 1.0 });
+        const fb_size = window.getFramebufferSize();
+        zgui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
+
+        // Render FPS in top left
+        zgui.getBackgroundDrawList().addText(.{ 16, 16 }, 0xFFFFFFFF, "FPS: {d}", .{zgui.io.getFramerate()});
+
+        var i: i32 = 0;
+        if (zgui.begin("Objects", .{})) {
+            for (objects) |obj| {
+                i += 1;
+                zgui.pushIntId(i);
+                zgui.text("Object", .{});
+
+                _ = zgui.sliderFloat2("Position", .{ .v = @ptrCast(&obj.position), .min = -10, .max = 10 });
+                _ = zgui.sliderFloat2("Scale", .{ .v = @ptrCast(&obj.scale), .min = 0.1, .max = 10 });
+                _ = zgui.sliderFloat("Rotation", .{ .v = &obj.rotation, .min = 0, .max = 360 });
+                _ = zgui.colorEdit4("Colour", .{ .col = &obj.colour });
+
+                zgui.popId();
+            }
+        }
+        zgui.end();
+
+        if (zgui.begin("Camera", .{})) {
+            _ = zgui.sliderFloat2("Position", .{ .v = @ptrCast(&camera.position), .min = -10, .max = 10 });
+            _ = zgui.sliderFloat("Zoom", .{ .v = &camera.zoom, .min = 0.05, .max = 10 });
+        }
+        zgui.end();
 
         shader.use();
         buffers.use();
@@ -102,20 +127,20 @@ pub fn main() !void {
         }
 
         if (window.getKey(.down) == .press) {
-            if (camera.zoom > 0)
+            if (camera.zoom > 0.05)
                 camera.zoom -= 0.025;
         }
 
         if (window.getKey(.w) == .press) {
-            camera.position[1] += 1 / camera.zoom;
+            camera.position[1] += 0.1;
         } else if (window.getKey(.s) == .press) {
-            camera.position[1] -= 1 / camera.zoom;
+            camera.position[1] -= 0.1;
         }
 
         if (window.getKey(.a) == .press) {
-            camera.position[0] -= (1 / 200) / camera.zoom;
+            camera.position[0] -= 0.1;
         } else if (window.getKey(.d) == .press) {
-            camera.position[0] += (1 / 200) / camera.zoom;
+            camera.position[0] += 0.1;
         }
 
         for (objects) |obj| {
@@ -125,6 +150,7 @@ pub fn main() !void {
             gl.drawElements(gl.TRIANGLES, @intCast(rect_indices.len), gl.UNSIGNED_INT, null);
         }
 
+        zgui.backend.draw();
         window.swapBuffers();
     }
 }

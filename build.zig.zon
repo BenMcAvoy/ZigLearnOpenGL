@@ -27,8 +27,7 @@
         .zstbi = .{ .path = "zig-gamedev/libs/zstbi" },
         .zglfw = .{ .path = "zig-gamedev/libs/zglfw" },
         .zmath = .{ .path = "zig-gamedev/libs/zmath" },
-
-        // .zgui = .{ .path = "zig-gamedev/libs/zgui" },
+        .zgui = .{ .path = "zig-gamedev/libs/zgui" },
 
         .system_sdk = .{ .path = "zig-gamedev/libs/system-sdk" },
     },
