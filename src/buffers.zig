@@ -10,11 +10,10 @@ pub const Buffers = struct {
     ebo: c_uint,
 
     pub fn init(vertices: []const f32, indices: []const u32) !Buffers {
-        std.debug.print("Buffers::init()\n", .{});
-
         if (vertices.len == 0) {
             return error.EmptyVertexData;
         }
+
         if (indices.len == 0) {
             return error.EmptyIndexData;
         }

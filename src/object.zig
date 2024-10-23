@@ -11,21 +11,54 @@ pub const Object = struct {
     scale: zmath.Vec,
     rotation: f32,
 
-    pub fn init(position: zmath.Vec, scale: zmath.Vec, rotation: f32) Object {
+    colour: zmath.Vec,
+
+    pub fn init(x: f32, y: f32) Object {
         return Object{
-            .position = position,
-            .scale = scale,
-            .rotation = rotation,
+            .position = zmath.f32x4(x, y, 0.0, 0.0),
+            .scale = zmath.f32x4(1.0, 1.0, 0.0, 0.0),
+            .rotation = 0.0,
+
+            .colour = zmath.f32x4(1.0, 1.0, 0.0, 1.0),
         };
     }
 
+    pub fn setPosition(self: *Object, x: f32, y: f32) void {
+        self.position = zmath.f32x4(x, y, 0.0, 0.0);
+    }
+
+    pub fn setScale(self: *Object, x: f32, y: f32) void {
+        self.scale = zmath.f32x4(x, y, 0.0, 0.0);
+    }
+
+    pub fn setRotation(self: *Object, rotation: f32) void {
+        self.rotation = rotation;
+    }
+
+    pub fn setColour(self: *Object, r: f32, g: f32, b: f32, a: f32) void {
+        self.colour = zmath.f32x4(r, g, b, a);
+    }
+
+    pub fn translate(self: *Object, x: f32, y: f32) void {
+        self.position[0] += x;
+        self.position[1] += y;
+    }
+
+    pub fn scale(self: *Object, x: f32, y: f32) void {
+        self.scale = zmath.mul(self.scale, zmath.f32x4(x, y, 0.0, 0.0));
+    }
+
+    pub fn rotate(self: *Object, rotation: f32) void {
+        self.rotation += rotation;
+    }
+
     pub fn getModelMatrix(self: Object) zmath.Mat {
-        var model_matrix = zmath.identity();
+        var model = zmath.identity();
+        model = zmath.mul(zmath.translation(self.position[0], self.position[1], 0.0), model);
+        const rotationRad = (-self.rotation) * std.math.pi / 180.0;
+        model = zmath.mul(zmath.rotationZ(rotationRad), model);
+        model = zmath.mul(zmath.scaling(self.scale[0], self.scale[1], 1.0), model);
 
-        model_matrix = zmath.mul(model_matrix, zmath.translation(self.position[0], self.position[1], self.position[2]));
-        model_matrix = zmath.mul(model_matrix, zmath.scaling(self.scale[0], self.scale[1], self.scale[2]));
-        model_matrix = zmath.mul(model_matrix, zmath.rotationZ(self.rotation));
-
-        return model_matrix;
+        return model;
     }
 };

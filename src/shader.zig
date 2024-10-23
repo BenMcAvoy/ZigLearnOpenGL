@@ -13,10 +13,6 @@ pub const ShaderProgram = struct {
     program: c_uint,
 
     pub fn init(vertex_shader: []const u8, fragment_shader: []const u8) !ShaderProgram {
-        std.debug.print("ShaderProgram::init()\n", .{});
-        std.debug.print("vertex_shader.len: {d}\n", .{vertex_shader.len});
-        std.debug.print("fragment_shader.len: {d}\n", .{fragment_shader.len});
-
         // Used for error checking
         var success: c_int = gl.TRUE;
         var info_log: [512]u8 = undefined;
@@ -94,5 +90,10 @@ pub const ShaderProgram = struct {
     pub fn set_mat4(self: ShaderProgram, name: []const u8, value: zmath.Mat) void {
         const location = gl.getUniformLocation(self.program, name.ptr);
         gl.uniformMatrix4fv(location, 1, gl.FALSE, &zmath.matToArr(value));
+    }
+
+    pub fn set_vec4(self: ShaderProgram, name: []const u8, value: zmath.Vec) void {
+        const location = gl.getUniformLocation(self.program, name.ptr);
+        gl.uniform4fv(location, 1, &zmath.vecToArr4(value));
     }
 };
