@@ -76,6 +76,9 @@ pub fn main() !void {
     defer zgui.deinit();
     defer zgui.backend.deinit();
 
+    const font = @embedFile("resources/Roboto-Medium.ttf");
+    _ = zgui.io.addFontFromMemory(font, 16);
+
     var time: f64 = 0;
     while (!window.shouldClose() and window.getKey(.escape) != .press) {
         time = glfw.getTime();
@@ -85,6 +88,8 @@ pub fn main() !void {
         gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0.1, 0.1, 0.1, 1.0 });
         const fb_size = window.getFramebufferSize();
         zgui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
+        zgui.gizmo.beginFrame();
+        zgui.gizmo.setRect(0, 0, @floatFromInt(fb_size[0]), @floatFromInt(fb_size[1]));
 
         // Render FPS in top left
         zgui.getBackgroundDrawList().addText(.{ 16, 16 }, 0xFFFFFFFF, "FPS: {d}", .{zgui.io.getFramerate()});
@@ -95,6 +100,18 @@ pub fn main() !void {
                 i += 1;
                 zgui.pushIntId(i);
                 zgui.text("Object", .{});
+
+                zgui.gizmo.setID(i);
+
+                var model = obj.getModelMatrix();
+                if (zgui.gizmo.manipulate(@ptrCast(&camera.view), @ptrCast(&camera.projection), .{ .translate_x = true, .translate_y = true }, .world, @ptrCast(&model), .{ .snap = &.{ 0.05, 0.05, 0.05 } })) {
+                    var translation: [3]f32 = undefined;
+                    var rotation: [3]f32 = undefined;
+                    var scale: [3]f32 = undefined;
+
+                    zgui.gizmo.decomposeMatrixToComponents(&zmath.matToArr(model), @ptrCast(&translation), @ptrCast(&rotation), @ptrCast(&scale));
+                    obj.setPosition(translation[0], translation[1]);
+                }
 
                 _ = zgui.sliderFloat2("Position", .{ .v = @ptrCast(&obj.position), .min = -10, .max = 10 });
                 _ = zgui.sliderFloat2("Scale", .{ .v = @ptrCast(&obj.scale), .min = 0.1, .max = 10 });
@@ -116,11 +133,11 @@ pub fn main() !void {
         buffers.use();
         camera.use();
 
-        object_1.rotate(0.5);
-        object_2.rotate(-0.5);
+        // object_1.rotate(0.5);
+        // object_2.rotate(-0.5);
 
-        object_3.setPosition(@floatCast(@cos(time * 2)), @floatCast(@sin(time * 2)));
-        object_3.rotate(5.0);
+        // object_3.setPosition(@floatCast(@cos(time * 2)), @floatCast(@sin(time * 2)));
+        // object_3.rotate(5.0);
 
         if (window.getKey(.up) == .press) {
             camera.zoom += 0.025;
